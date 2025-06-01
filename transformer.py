@@ -437,7 +437,7 @@ def decode_batch_greedy(
         ]
         new_dec_outputs, output = outputs[:-1], outputs[-1]
         print(f"Step {i} output shape = {output.shape}")
-        print(f"Output probabilities for first 10 tokens: {output[0,0,:10]}")
+        print(f"Output probabilities for first 10 tokens: {output[0, 0, :10]}")
         for dec_output, new_out in zip(dec_outputs, new_dec_outputs):
             dec_output[:, -1, :] = new_out[:, 0, :]
         dec_outputs = [
@@ -607,8 +607,13 @@ class Transformer:
             tgt_emb, tgt_seq, src_seq, enc_output, active_layers=active_layers
         )
         final_output = self.target_layer(dec_output)
+        # final_output = Lambda(lambda x: x[:, :tf.shape(tgt_true)[1], :], output_shape=lambda input_shape: (input_shape[0], None, input_shape[2]))(final_output)
+        # final_output = Lambda(lambda x: x[:, :tf.shape(tgt_true)[1], :])(final_output)
 
-        def get_loss(y_pred, y_true):
+        print(f"Model output shape: {final_output.shape}")
+        print(f"Target shape: {tgt_true.shape}")
+
+        def get_loss(y_true, y_pred):
             y_true = tf.cast(y_true, "int32")
             loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
                 labels=y_true, logits=y_pred
@@ -618,7 +623,7 @@ class Transformer:
             loss = K.mean(loss)
             return loss
 
-        def get_accu(y_pred, y_true):
+        def get_accu(y_true, y_p):
             mask = tf.cast(tf.not_equal(y_true, 0), "float32")
             corr = K.cast(
                 K.equal(
@@ -637,6 +642,13 @@ class Transformer:
         # self.model.add_loss([loss])
         # self.model.add_metric(self.ppl, name='ppl')
         # self.model.add_metric(self.accu, name='accu')
+
+        def custom_loss(y_true, y_pred):
+            y_true = y_true[:, 1:]
+            # y_pred = y_pred[:, :tf.shape(y_true)[1], :]
+            return tf.keras.losses.sparse_categorical_crossentropy(
+                y_true, y_pred, from_logits=True
+            )
 
         # self.model.compile(optimizer, None)
         self.model.compile(
@@ -865,7 +877,8 @@ class LRSchedulerPerStep(Callback):
     def on_batch_begin(self, batch, logs=None):
         self.step_num += 1
         lr = self.basic * min(self.step_num**-0.5, self.step_num * self.warm)
-        K.set_value(self.model.optimizer.lr, lr)
+        # K.set_value(self.model.optimizer.learning_rate, lr)
+        self.model.optimizer.learning_rate = lr
 
 
 add_layer = Lambda(lambda x: x[0] + x[1], output_shape=lambda x: x[0])

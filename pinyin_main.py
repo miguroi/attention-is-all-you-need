@@ -11,6 +11,11 @@ itokens, otokens = dd.MakeS2SDict('data/pinyin.corpus.examples.txt', dict_file='
 print('seq 1 words:', itokens.num())
 print('seq 2 words:', otokens.num())
 
+with open('data/pinyin.txt', 'r') as f:
+    for i, line in enumerate(f):
+        if i < 5:
+            print(repr(line.strip()))
+
 from transformer import Transformer, LRSchedulerPerStep
 
 d_model = 256  
@@ -25,8 +30,8 @@ mfile = 'models/pinyin.model.weights.h5'
 opt = Adam(0.001, 0.9, 0.98, epsilon=1e-9)
 s2s.compile(opt)
 
-try: s2s.model.load_weights(mfile)
-except: print('\n\nnew model')
+# try: s2s.model.load_weights(mfile)
+# except: print('\n\nnew model')
 
 print('Output tokens:', otokens.num())
 print('Model output shape:', s2s.model.output.shape)
@@ -42,11 +47,24 @@ if 'train' in cmds:
     print("Total samples:", len(X))
     print("Validation samples:", int(len(X) * 0.1))
 
+    print("Sample input (X):", X[0][:10])
+    print("Sample target (Y):", Y[0][:10])
+    print("Sample decoder input (Y[:,:-1])", Y[0,:-1][:10])
+    print("Sample decoder target (Y[:,1:])", Y[0,1:][:10])
+
+    print("Input tokens:", [itokens.token(x) for x in X[0][:10] if x != 0])
+    print("Target tokens:", [otokens.token(x) for x in Y[0][:10] if x != 0])
+
     opt1 = Adam(0.001, 0.9, 0.98, epsilon=1e-9)
     s2s.compile(opt1, active_layers=1)
     # s2s.model.fit(gen, steps_per_epoch=200, epochs=5, callbacks=[lr_scheduler, model_saver])
     s2s.model.fit([X,Y], Y[:,1:], batch_size=32, epochs=5, validation_split=0.1)
     
+    pred = s2s.model.predict([X[:5], Y[:5]])
+    print("Prediction shape:", pred.shape)
+    print("Sample prediction argmax:", pred[0].argmax(axis=-1)[:10])
+    print("Predicted tokens:", [otokens.token(x) for x in pred[0].argmax(axis=-1)[:10]])
+
     opt2 = Adam(0.001, 0.9, 0.98, epsilon=1e-9)
     s2s.compile(opt2, active_layers=2)
     s2s.model.fit([X,Y], Y[:,1:], batch_size=32, epochs=5, validation_split=0.1)

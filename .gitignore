@@ -12,3 +12,5 @@ __pycache__/
 *.ju.py
 dump/
 tensor2tensor/
+pinyin_data/
+data/pinyin.txt
