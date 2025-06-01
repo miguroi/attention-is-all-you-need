@@ -6,3 +6,9 @@ data/pinyin_word.txt
 univ_transformer.py
 hexconv_main.py
 .vs/
+*.xml
+__pycache__/
+*.ipynb
+*.ju.py
+dump/
+tensor2tensor/
